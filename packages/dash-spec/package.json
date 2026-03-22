@@ -1,0 +1,19 @@
+{
+  "name": "@dash-spec/core",
+  "version": "0.0.0",
+  "description": "Dashboard specification parser",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "echo \"Tests not implemented yet\"",
+    "lint": "echo \"Lint not configured yet\""
+  },
+  "peerDependencies": {
+    "pql-parser": "*"
+  }
+}
