@@ -7,10 +7,6 @@
   Parse a YAML file once. Render a complete, typed analytics dashboard anywhere.
 </p>
 
-<p align="center">
-  <video src="docs/assets/demo-recording.mov" width="720" controls></video>
-</p>
-
 
 ## What is DashSpec?
 
