@@ -11,7 +11,7 @@ import type {
   WhereCondition
 } from 'pql-parser/dist/types';
 
-const databaseUrl = process.env.PROSQUARE_DATABASE_URL ?? 'postgres://postgres:postgres@127.0.0.1:5432/app';
+const databaseUrl = process.env.POSTGRES_DATABASE_URL ?? 'postgres://postgres:postgres@127.0.0.1:5432/app';
 
 const viewColumns: Record<string, string[]> = {
   dashboard_sales: [
@@ -79,7 +79,7 @@ type QueryBuildResult = {
   plotFunction: string;
 };
 
-export type ProSquareQueryResult = {
+export type PostgresQueryResult = {
   rows: Record<string, unknown>[];
   sql: string;
   fields: string[];
@@ -327,7 +327,7 @@ function buildQuery(query: PQLQuery): QueryBuildResult {
   };
 }
 
-export async function runProSquareQuery(query: PQLQuery): Promise<ProSquareQueryResult> {
+export async function runPostgresQuery(query: PQLQuery): Promise<PostgresQueryResult> {
   const built = buildQuery(query);
   const result = await getPool().query<Record<string, unknown>>(built.text, built.values);
 

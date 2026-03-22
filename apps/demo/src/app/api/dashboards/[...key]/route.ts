@@ -1,7 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { NextResponse } from "next/server";
 import { loadDashboard } from "../../../../lib/rustfs";
-import { runProSquareQuery } from "../../../../lib/prosquare";
+import { runPostgresQuery } from "../../../../lib/postgres";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -22,7 +22,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const cards = await Promise.all(
       dashboard.spec.cards.map(async (card) => {
         try {
-          const result = await runProSquareQuery(card.parsedExpr);
+          const result = await runPostgresQuery(card.parsedExpr);
           return { card, result };
         } catch (error) {
           const message =

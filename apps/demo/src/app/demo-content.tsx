@@ -6,7 +6,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import type { DashboardCardSpec, DashboardSpec } from "@dash-spec/core";
 import { type DashboardListing } from "../lib/rustfs";
-import { type ProSquareQueryResult } from "../lib/prosquare";
+import { type PostgresQueryResult } from "../lib/postgres";
 import type {
   BarPlotCall,
   PiePlotCall,
@@ -18,7 +18,7 @@ import "./chartjs-setup";
 type CardExecution =
   | {
       card: DashboardCardSpec;
-      result: ProSquareQueryResult;
+      result: PostgresQueryResult;
       error?: undefined;
     }
   | {
@@ -489,7 +489,7 @@ export function DemoContent() {
           <div className="demo-error-panel">
             <p className="hero-chip">Integration unavailable</p>
             <h1>
-              DashSpec expects RustFS and ProSquare to be available for the
+              DashSpec expects RustFS and Postgres to be available for the
               demo.
             </h1>
             <p>{error}</p>

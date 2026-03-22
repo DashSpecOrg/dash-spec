@@ -7,7 +7,6 @@
   Parse a YAML file once. Render a complete, typed analytics dashboard anywhere.
 </p>
 
----
 
 ## What is DashSpec?
 
@@ -19,7 +18,6 @@ Each dashboard is defined in a single YAML file. Each card carries a **PQL** (Pl
 YAML dashboard spec  →  parseDashboard()  →  DashboardSpec  →  your renderer
 ```
 
----
 
 ## Packages
 
@@ -28,7 +26,6 @@ YAML dashboard spec  →  parseDashboard()  →  DashboardSpec  →  your render
 | `packages/dash-spec` | `@dash-spec/core` — the YAML parser and type definitions |
 | `apps/demo` | Next.js demo app that renders live dashboards from RustFS |
 
----
 
 ## Quick start
 
@@ -48,7 +45,6 @@ for (const card of spec.cards) {
 }
 ```
 
----
 
 ## Dashboard YAML format
 
@@ -116,7 +112,6 @@ cards:
 
 Grid positions are **1-based and inclusive**. Both `start` and `end` must be positive integers with `end >= start`, and neither may exceed the dashboard's declared `dimensions`.
 
----
 
 ## PQL — Plot Query Language
 
@@ -165,7 +160,6 @@ WHERE name LIKE 'acme%'
 WHERE revenue > 500 AND region = 'us-west'
 ```
 
----
 
 ## API reference
 
@@ -227,16 +221,15 @@ try {
 | `cards[2].expr` | PQL expression on the third card is invalid |
 | `cards[0].pos.cols` | Column range exceeds the grid bounds |
 
----
 
 ## Running the demo
 
-The demo app renders live dashboards from a RustFS (S3-compatible) bucket and executes PQL queries against a ProSquare database.
+The demo app renders live dashboards from a RustFS (S3-compatible) bucket and executes PQL queries against a Postgres database.
 
 **Prerequisites:** Docker, Node.js 20+
 
 ```bash
-# Start RustFS + ProSquare
+# Start RustFS + Postgres
 docker compose up -d
 
 # Install dependencies
@@ -250,7 +243,6 @@ Then open [http://localhost:3000/demo](http://localhost:3000/demo).
 
 Dashboard YAML files are loaded from `dashboards/` and automatically synced to the `dashspec` bucket on startup. Add or edit YAML files there to update the demo.
 
----
 
 ## Repository structure
 
@@ -260,7 +252,7 @@ Dashboard YAML files are loaded from `dashboards/` and automatically synced to t
 │   └── demo/               # Next.js demo application
 │       └── src/
 │           ├── app/        # Pages, layout, and chart components
-│           ├── lib/        # RustFS and ProSquare client utilities
+│           ├── lib/        # RustFS and Postgres client utilities
 │           └── app/api/    # Dashboard listing and detail API routes
 ├── dashboards/             # Sample dashboard YAML files
 ├── packages/
