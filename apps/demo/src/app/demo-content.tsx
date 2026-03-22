@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import type { DashboardCardSpec, DashboardSpec } from "@dash-spec/core";
 import { type DashboardListing } from "../lib/rustfs";
 import { type ProSquareQueryResult } from "../lib/prosquare";
-import type { PointPlotCall } from "pql-parser/dist/types";
+import type { BarPlotCall, PiePlotCall, PointPlotCall } from "pql-parser/dist/types";
 
 type CardExecution =
   | {
@@ -29,12 +29,28 @@ type LoadedDashboard = {
   cards: CardExecution[];
 };
 
+function formatDateLabel(value: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(value);
+}
+
 function toLabel(value: unknown): string {
   if (value === null || value === undefined) {
     return "n/a";
   }
 
   if (typeof value === "string") {
+    if (/^\d{4}-\d{2}-\d{2}(?:[T ][\d:.+-Z]*)?$/.test(value)) {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return formatDateLabel(parsed);
+      }
+    }
+
     return value;
   }
 
@@ -43,7 +59,7 @@ function toLabel(value: unknown): string {
   }
 
   if (value instanceof Date) {
-    return value.toISOString().slice(0, 10);
+    return formatDateLabel(value);
   }
 
   return String(value);
@@ -109,6 +125,10 @@ function formatAxisValue(value: number, unit: string): string {
   return formatMetric(value);
 }
 
+function labelForColumn(column?: string, fallback?: string): string {
+  return column ?? fallback ?? "value";
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const response = await fetch(path, {
     cache: "no-store",
@@ -135,14 +155,14 @@ function CardChart({ execution }: { execution: CardExecution }) {
 
   switch (result.plotFunction) {
     case "BAR":
-      return <BarChart rows={result.rows} />;
+      return <BarChart execution={execution} rows={result.rows} />;
     case "LINE":
     case "AREA":
-      return <LineChart rows={result.rows} />;
+      return <LineChart execution={execution} rows={result.rows} />;
     case "SCATTER":
       return <ScatterChart execution={execution} rows={result.rows} />;
     case "PIE":
-      return <PieChart rows={result.rows} />;
+      return <PieChart execution={execution} rows={result.rows} />;
     default:
       return (
         <div className="chart-empty">
@@ -152,9 +172,25 @@ function CardChart({ execution }: { execution: CardExecution }) {
   }
 }
 
-function BarChart({ rows }: { rows: Record<string, unknown>[] }) {
+function BarChart({
+  execution,
+  rows,
+}: {
+  execution: Extract<CardExecution, { result: ProSquareQueryResult }>;
+  rows: Record<string, unknown>[];
+}) {
   const values = rows.map((row) => toNumber(row.value));
   const max = Math.max(...values, 1);
+  const clause = execution.card.parsedExpr.plotClause as BarPlotCall;
+  const categoryLabel = labelForColumn(
+    clause.categoriesColumn.column,
+    clause.categoriesColumn.identifier,
+  );
+  const valueLabel = labelForColumn(
+    clause.valuesColumn.column,
+    clause.valuesColumn.identifier,
+  );
+  const valueUnit = unitForColumn(clause.valuesColumn.column);
   const chartWidth = 320;
   const chartHeight = 220;
   const left = 38;
@@ -187,7 +223,7 @@ function BarChart({ rows }: { rows: Record<string, unknown>[] }) {
               }
             />
             <text x={left - 8} y={tick.y + 4} className="chart-axis-label">
-              {formatMetric(tick.value)}
+              {formatAxisValue(tick.value, valueUnit)}
             </text>
           </g>
         ))}
@@ -219,7 +255,7 @@ function BarChart({ rows }: { rows: Record<string, unknown>[] }) {
                 textAnchor="middle"
                 className="bar-chart-value"
               >
-                {formatMetric(value)}
+                {formatAxisValue(value, valueUnit)}
               </text>
               <text
                 x={x + barWidth / 2}
@@ -232,22 +268,64 @@ function BarChart({ rows }: { rows: Record<string, unknown>[] }) {
             </g>
           );
         })}
+        <text
+          x={chartWidth / 2}
+          y={chartHeight - 2}
+          textAnchor="middle"
+          className="chart-axis-title"
+        >
+          {categoryLabel}
+        </text>
+        <text
+          x="16"
+          y={chartHeight / 2}
+          textAnchor="middle"
+          className="chart-axis-title"
+          transform={`rotate(-90 16 ${chartHeight / 2})`}
+        >
+          {valueLabel}
+          {valueUnit ? ` (${valueUnit})` : ""}
+        </text>
       </svg>
     </div>
   );
 }
 
-function LineChart({ rows }: { rows: Record<string, unknown>[] }) {
+function LineChart({
+  execution,
+  rows,
+}: {
+  execution: Extract<CardExecution, { result: ProSquareQueryResult }>;
+  rows: Record<string, unknown>[];
+}) {
+  const clause = execution.card.parsedExpr.plotClause as PointPlotCall;
   const values = rows.map((row) => toNumber(row.y));
   const labels = rows.map((row) => toLabel(row.x));
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const range = Math.max(max - min, 1);
+  const xLabel = labelForColumn(clause.xColumn.column, clause.xColumn.identifier);
+  const yLabel = labelForColumn(clause.yColumn.column, clause.yColumn.identifier);
+  const xUnit = unitForColumn(clause.xColumn.column);
+  const yUnit = unitForColumn(clause.yColumn.column);
+  const xStart = 40;
+  const xEnd = 300;
+  const chartHeight = 220;
+  const yTop = 20;
+  const yBottom = 170;
+  const xTicks = rows.map((row, index) => ({
+    label: toLabel(row.x),
+    x: rows.length === 1 ? (xStart + xEnd) / 2 : xStart + (index / (rows.length - 1)) * (xEnd - xStart),
+  }));
+  const yTicks = [0, 0.5, 1].map((ratio) => ({
+    value: min + range * ratio,
+    y: yBottom - (yBottom - yTop) * ratio,
+  }));
 
   const points = values
     .map((value, index) => {
-      const x = rows.length === 1 ? 160 : (index / (rows.length - 1)) * 320;
-      const y = 170 - ((value - min) / range) * 140;
+      const x = rows.length === 1 ? (xStart + xEnd) / 2 : xStart + (index / (rows.length - 1)) * (xEnd - xStart);
+      const y = yBottom - ((value - min) / range) * (yBottom - yTop);
       return `${x},${y}`;
     })
     .join(" ");
@@ -255,17 +333,33 @@ function LineChart({ rows }: { rows: Record<string, unknown>[] }) {
   return (
     <div className="line-chart">
       <svg
-        viewBox="0 0 320 190"
+        viewBox={`0 0 320 ${chartHeight}`}
         className="line-chart-svg"
         role="img"
         aria-label="Line chart"
       >
-        <path d="M0 170 H320" className="chart-grid-line" />
-        <path d="M0 100 H320" className="chart-grid-line chart-grid-line-mid" />
+        {yTicks.map((tick, index) => (
+          <g key={`${tick.value}-${index}`}>
+            <path
+              d={`M${xStart} ${tick.y} H${xEnd}`}
+              className={
+                index === 0 ? "chart-axis-line" : "chart-grid-line chart-grid-line-mid"
+              }
+            />
+            <text x={xStart - 8} y={tick.y + 4} className="chart-axis-label">
+              {formatAxisValue(tick.value, yUnit)}
+            </text>
+          </g>
+        ))}
+        <path d={`M${xStart} ${yBottom} H${xEnd}`} className="chart-axis-line" />
+        <path d={`M${xStart} ${yBottom} V${yTop}`} className="chart-axis-line" />
         <polyline points={points} className="line-chart-path" />
         {values.map((value, index) => {
-          const x = rows.length === 1 ? 160 : (index / (rows.length - 1)) * 320;
-          const y = 170 - ((value - min) / range) * 140;
+          const x =
+            rows.length === 1
+              ? (xStart + xEnd) / 2
+              : xStart + (index / (rows.length - 1)) * (xEnd - xStart);
+          const y = yBottom - ((value - min) / range) * (yBottom - yTop);
 
           return (
             <circle
@@ -277,12 +371,32 @@ function LineChart({ rows }: { rows: Record<string, unknown>[] }) {
             />
           );
         })}
-      </svg>
-      <div className="line-chart-labels">
-        {labels.map((label, index) => (
-          <span key={`${label}-${index}`}>{label}</span>
+        {xTicks.map((tick, index) => (
+          <text
+            key={`${tick.label}-${index}`}
+            x={tick.x}
+            y={188}
+            textAnchor="middle"
+            className="chart-axis-label chart-axis-label-center"
+          >
+            {tick.label}
+          </text>
         ))}
-      </div>
+        <text x="170" y={chartHeight - 6} textAnchor="middle" className="chart-axis-title">
+          {xLabel}
+          {xUnit ? ` (${xUnit})` : ""}
+        </text>
+        <text
+          x="16"
+          y="95"
+          textAnchor="middle"
+          className="chart-axis-title"
+          transform="rotate(-90 16 95)"
+        >
+          {yLabel}
+          {yUnit ? ` (${yUnit})` : ""}
+        </text>
+      </svg>
     </div>
   );
 }
@@ -354,7 +468,12 @@ function ScatterChart({
                 index === 0 ? "chart-axis-line" : "chart-grid-line chart-grid-line-mid"
               }
             />
-            <text x={tick.x} y="184" textAnchor="middle" className="chart-axis-label">
+            <text
+              x={tick.x}
+              y="184"
+              textAnchor="middle"
+              className="chart-axis-label chart-axis-label-center"
+            >
               {formatAxisValue(tick.value, xUnit)}
             </text>
           </g>
@@ -401,12 +520,28 @@ function ScatterChart({
   );
 }
 
-function PieChart({ rows }: { rows: Record<string, unknown>[] }) {
+function PieChart({
+  execution,
+  rows,
+}: {
+  execution: Extract<CardExecution, { result: ProSquareQueryResult }>;
+  rows: Record<string, unknown>[];
+}) {
+  const clause = execution.card.parsedExpr.plotClause as PiePlotCall;
   const values = rows.map((row) => toNumber(row.value));
   const total = Math.max(
     values.reduce((sum, value) => sum + value, 0),
     1,
   );
+  const categoryLabel = labelForColumn(
+    clause.categoriesColumn.column,
+    clause.categoriesColumn.identifier,
+  );
+  const valueLabel = labelForColumn(
+    clause.valuesColumn.column,
+    clause.valuesColumn.identifier,
+  );
+  const valueUnit = unitForColumn(clause.valuesColumn.column);
   let current = 0;
 
   const colors = [
@@ -427,11 +562,28 @@ function PieChart({ rows }: { rows: Record<string, unknown>[] }) {
 
   return (
     <div className="pie-chart">
-      <div
-        className="pie-chart-visual"
-        style={{ backgroundImage: `conic-gradient(${stops})` }}
-      />
+      <div className="pie-chart-visual-wrap">
+        <div
+          className="pie-chart-visual"
+          style={{ backgroundImage: `conic-gradient(${stops})` }}
+        />
+        <div className="pie-chart-summary">
+          <span>Metric</span>
+          <strong>
+            {valueLabel}
+            {valueUnit ? ` (${valueUnit})` : ""}
+          </strong>
+          <span>{formatAxisValue(total, valueUnit)} total</span>
+        </div>
+      </div>
       <div className="pie-chart-legend">
+        <div className="pie-chart-meta">
+          <span>Dimension: {categoryLabel}</span>
+          <span>
+            Metric: {valueLabel}
+            {valueUnit ? ` (${valueUnit})` : ""}
+          </span>
+        </div>
         {rows.map((row, index) => (
           <div
             className="pie-chart-legend-row"
@@ -442,7 +594,10 @@ function PieChart({ rows }: { rows: Record<string, unknown>[] }) {
               style={{ backgroundColor: colors[index % colors.length] }}
             />
             <span>{toLabel(row.category)}</span>
-            <strong>{Math.round((toNumber(row.value) / total) * 100)}%</strong>
+            <strong>
+              {Math.round((toNumber(row.value) / total) * 100)}% ·{" "}
+              {formatAxisValue(toNumber(row.value), valueUnit)}
+            </strong>
           </div>
         ))}
       </div>
