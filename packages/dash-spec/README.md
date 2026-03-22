@@ -1,11 +1,30 @@
 # @dash-spec/core
 
-TypeScript library for parsing dashboard YAML specifications into normalized JavaScript objects.
+TypeScript library for parsing and validating YAML dashboard specifications. See the [root README](../../README.md) for full documentation.
 
-## Planned Modules
+## Install
 
-- `types.ts`: Public type definitions for dashboard specs.
-- `parser.ts`: YAML parsing and normalization entry points.
-- `exceptions.ts`: Parser and validation error types.
+```bash
+npm install @dash-spec/core
+```
 
-Implementation is intentionally left as a stub for now.
+## Usage
+
+```ts
+import { parseDashboard, DashSpecParserError } from '@dash-spec/core';
+
+try {
+  const spec = parseDashboard(yamlString);
+  // spec: DashboardSpec
+} catch (error) {
+  if (error instanceof DashSpecParserError) {
+    console.error(`[${error.path}] ${error.message}`);
+  }
+}
+```
+
+## Exports
+
+- `parseDashboard(input: string): DashboardSpec` — parse and validate a YAML dashboard spec
+- `DashboardSpec`, `DashboardCardSpec`, `DashboardDimensions`, `CardPosition`, `GridRange` — type definitions
+- `DashSpecError`, `DashSpecParserError` — error classes
