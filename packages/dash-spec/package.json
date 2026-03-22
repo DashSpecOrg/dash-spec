@@ -13,7 +13,8 @@
     "test": "echo \"Tests not implemented yet\"",
     "lint": "echo \"Lint not configured yet\""
   },
-  "peerDependencies": {
-    "pql-parser": "*"
+  "dependencies": {
+    "pql-parser": "file:../../../pql-parser",
+    "yaml": "^2.8.1"
   }
 }

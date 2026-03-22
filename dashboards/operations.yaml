@@ -1,0 +1,51 @@
+name: operations_health
+title: Operations health
+description: Monitor ticket volume, traffic quality, and campaign performance from the seeded dataset.
+dimensions:
+ rows: 6
+ cols: 12
+cards:
+- name: traffic_sessions
+  title: Sessions by source
+  description: Website sessions grouped by acquisition source.
+  expr: PLOT BAR(source, SUM(sessions)) GROUP BY source ORDER BY source ASC
+  pos:
+   rows:
+     start: 1
+     end: 3
+   cols:
+     start: 1
+     end: 6
+- name: traffic_quality
+  title: Bounce rate scatter
+  description: Compare bounce rate against session duration.
+  expr: PLOT SCATTER(avg_session_duration_sec, bounce_rate) WHERE sessions > 15000 ORDER BY bounce_rate DESC LIMIT 24
+  pos:
+   rows:
+     start: 1
+     end: 3
+   cols:
+     start: 7
+     end: 12
+- name: campaign_conversions
+  title: Campaign conversions
+  description: Conversion volume across marketing channels.
+  expr: PLOT PIE(channel, SUM(conversions)) GROUP BY channel ORDER BY channel ASC
+  pos:
+   rows:
+     start: 4
+     end: 6
+   cols:
+     start: 1
+     end: 4
+- name: support_satisfaction
+  title: Ticket satisfaction
+  description: Satisfaction score distribution by ticket priority.
+  expr: PLOT BAR(priority, AVG(satisfaction_score)) GROUP BY priority ORDER BY priority ASC
+  pos:
+   rows:
+     start: 4
+     end: 6
+   cols:
+     start: 5
+     end: 12

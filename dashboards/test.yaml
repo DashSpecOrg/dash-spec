@@ -1,29 +1,51 @@
-name: dashboard1
-title: My dashboard
-description: This is my dashboard.
+name: commerce_overview
+title: Commerce overview
+description: A live analytics dashboard rendered from YAML and powered by PQL.
 dimensions:
- rows: 5
- cols: 10
+ rows: 6
+ cols: 12
 cards:
-- name: card_1
-  title: Card 1
-  description: this is card no.1
-  expr: PLOT SCATTER(name, quantity)
+- name: monthly_revenue
+  title: Monthly revenue
+  description: Revenue trend across the last 12 seeded months.
+  expr: PLOT LINE(month, SUM(revenue)) GROUP BY month ORDER BY month ASC LIMIT 12
   pos:
    rows:
      start: 1
-     end: 2
+     end: 3
    cols:
-     start: 3
-     end: 4
-- name: card_2
-  title: Card 2
-  description: this is card no.2
-  expr: PLOT SCATTER(name, quantity)
+     start: 1
+     end: 6
+- name: category_revenue
+  title: Revenue by category
+  description: Compare total revenue across product categories.
+  expr: PLOT BAR(category, SUM(revenue)) GROUP BY category ORDER BY category ASC
   pos:
    rows:
      start: 1
-     end: 2
+     end: 3
    cols:
-     start: 3
+     start: 7
+     end: 12
+- name: segment_mix
+  title: Segment revenue mix
+  description: Revenue contribution by customer segment.
+  expr: PLOT PIE(segment, SUM(revenue)) GROUP BY segment ORDER BY segment ASC
+  pos:
+   rows:
+     start: 4
+     end: 6
+   cols:
+     start: 1
      end: 4
+- name: revenue_scatter
+  title: Order item revenue scatter
+  description: A scatter of order-item quantity versus realized revenue.
+  expr: PLOT SCATTER(quantity, revenue) WHERE revenue > 200 ORDER BY revenue DESC LIMIT 24
+  pos:
+   rows:
+     start: 4
+     end: 6
+   cols:
+     start: 5
+     end: 12

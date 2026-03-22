@@ -6,8 +6,11 @@ export class DashSpecError extends Error {
 }
 
 export class DashSpecParserError extends DashSpecError {
-  constructor(message: string) {
-    super(message);
+  readonly path?: string;
+
+  constructor(message: string, path?: string) {
+    super(path ? `${path}: ${message}` : message);
     this.name = 'DashSpecParserError';
+    this.path = path;
   }
 }

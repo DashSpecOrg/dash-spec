@@ -365,3 +365,70 @@ INSERT INTO website_traffic (traffic_date, source, sessions, page_views, bounce_
 ('2024-10-31', 'Social Media', 55000, 159500, 41.0, 160, 38500),
 ('2024-10-31', 'Paid Search', 40000, 148000, 26.0, 230, 28000),
 ('2024-10-31', 'Referral', 20000, 76000, 22.0, 280, 10000);
+
+-- ============================================
+-- DEMO ANALYTICS VIEW
+-- ============================================
+
+CREATE OR REPLACE VIEW dashboard_sales AS
+SELECT
+    o.order_id,
+    o.order_date,
+    DATE_TRUNC('month', o.order_date)::date AS month,
+    o.status AS order_status,
+    c.customer_id,
+    c.name AS customer_name,
+    c.region,
+    c.segment,
+    c.acquisition_channel,
+    p.product_id,
+    p.name AS product_name,
+    p.category,
+    p.subcategory,
+    oi.quantity,
+    oi.unit_price,
+    ROUND((oi.quantity * oi.unit_price * (1 - o.discount_pct / 100.0))::numeric, 2) AS revenue,
+    ROUND((oi.quantity * p.unit_cost)::numeric, 2) AS cost,
+    ROUND((oi.quantity * ((oi.unit_price * (1 - o.discount_pct / 100.0)) - p.unit_cost))::numeric, 2) AS gross_profit
+FROM order_items oi
+JOIN orders o ON o.order_id = oi.order_id
+JOIN customers c ON c.customer_id = o.customer_id
+JOIN products p ON p.product_id = oi.product_id;
+
+CREATE OR REPLACE VIEW dashboard_traffic AS
+SELECT
+    traffic_date,
+    DATE_TRUNC('month', traffic_date)::date AS month,
+    source,
+    sessions,
+    page_views,
+    bounce_rate,
+    avg_session_duration_sec,
+    new_users
+FROM website_traffic;
+
+CREATE OR REPLACE VIEW dashboard_support AS
+SELECT
+    ticket_id,
+    customer_id,
+    order_id,
+    category,
+    priority,
+    status,
+    created_at,
+    resolved_at,
+    satisfaction_score
+FROM support_tickets;
+
+CREATE OR REPLACE VIEW dashboard_campaigns AS
+SELECT
+    campaign_id,
+    name,
+    channel,
+    start_date,
+    end_date,
+    budget,
+    impressions,
+    clicks,
+    conversions
+FROM marketing_campaigns;
