@@ -35,10 +35,10 @@ export default function HomePage() {
               <span>Declarative layout, metadata, and cards in one spec.</span>
             </div>
             <div className="hero-panel-card hero-panel-card-secondary">
-              <span className="hero-panel-label">Demo showcase</span>
-              <strong>/demo</strong>
+              <span className="hero-panel-label">PQL expression</span>
+              <strong>PLOT BAR(category, SUM(revenue))</strong>
               <span>
-                Explore a sample analytics app built on top of DashSpec.
+                SQL-inspired query language for defining chart visualizations.
               </span>
             </div>
           </div>
