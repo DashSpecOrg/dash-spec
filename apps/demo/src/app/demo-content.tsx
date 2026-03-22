@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import type { DashboardCardSpec, DashboardSpec } from "@dash-spec/core";
 import { type DashboardListing } from "../lib/rustfs";
 import { type ProSquareQueryResult } from "../lib/prosquare";
+import type { PointPlotCall } from "pql-parser/dist/types";
 
 type CardExecution =
   | {
@@ -67,6 +68,47 @@ function formatMetric(value: number): string {
   }).format(value);
 }
 
+function unitForColumn(column?: string): string {
+  switch (column) {
+    case "bounce_rate":
+      return "%";
+    case "avg_session_duration_sec":
+      return "sec";
+    case "revenue":
+    case "cost":
+    case "gross_profit":
+    case "unit_price":
+    case "budget":
+      return "$";
+    case "quantity":
+    case "sessions":
+    case "page_views":
+    case "new_users":
+    case "clicks":
+    case "conversions":
+    case "impressions":
+      return "count";
+    default:
+      return "";
+  }
+}
+
+function formatAxisValue(value: number, unit: string): string {
+  if (unit === "$") {
+    return `$${formatMetric(value)}`;
+  }
+
+  if (unit === "%") {
+    return `${value.toFixed(0)}%`;
+  }
+
+  if (unit) {
+    return `${formatMetric(value)} ${unit}`;
+  }
+
+  return formatMetric(value);
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const response = await fetch(path, {
     cache: "no-store",
@@ -98,7 +140,7 @@ function CardChart({ execution }: { execution: CardExecution }) {
     case "AREA":
       return <LineChart rows={result.rows} />;
     case "SCATTER":
-      return <ScatterChart rows={result.rows} />;
+      return <ScatterChart execution={execution} rows={result.rows} />;
     case "PIE":
       return <PieChart rows={result.rows} />;
     default:
@@ -111,29 +153,86 @@ function CardChart({ execution }: { execution: CardExecution }) {
 }
 
 function BarChart({ rows }: { rows: Record<string, unknown>[] }) {
-  const max = Math.max(...rows.map((row) => toNumber(row.value)), 1);
+  const values = rows.map((row) => toNumber(row.value));
+  const max = Math.max(...values, 1);
+  const chartWidth = 320;
+  const chartHeight = 220;
+  const left = 38;
+  const right = 16;
+  const top = 18;
+  const bottom = 50;
+  const innerWidth = chartWidth - left - right;
+  const innerHeight = chartHeight - top - bottom;
+  const step = rows.length > 0 ? innerWidth / rows.length : innerWidth;
+  const barWidth = Math.min(28, step * 0.64);
+  const ticks = [0, 0.5, 1].map((ratio) => ({
+    value: Math.round(max * ratio),
+    y: top + innerHeight - innerHeight * ratio,
+  }));
 
   return (
     <div className="bar-chart">
-      {rows.map((row, index) => {
-        const value = toNumber(row.value);
-        const width = `${(value / max) * 100}%`;
+      <svg
+        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+        className="bar-chart-svg"
+        role="img"
+        aria-label="Bar chart"
+      >
+        {ticks.map((tick, index) => (
+          <g key={`${tick.value}-${index}`}>
+            <path
+              d={`M${left} ${tick.y} H${chartWidth - right}`}
+              className={
+                index === 0 ? "chart-axis-line" : "chart-grid-line chart-grid-line-mid"
+              }
+            />
+            <text x={left - 8} y={tick.y + 4} className="chart-axis-label">
+              {formatMetric(tick.value)}
+            </text>
+          </g>
+        ))}
 
-        return (
-          <div
-            className="bar-chart-row"
-            key={`${toLabel(row.category)}-${index}`}
-          >
-            <div className="bar-chart-labels">
-              <span>{toLabel(row.category)}</span>
-              <strong>{formatMetric(value)}</strong>
-            </div>
-            <div className="bar-chart-track">
-              <div className="bar-chart-fill" style={{ width }} />
-            </div>
-          </div>
-        );
-      })}
+        <path
+          d={`M${left} ${top} V${top + innerHeight} H${chartWidth - right}`}
+          className="chart-axis-line"
+        />
+
+        {rows.map((row, index) => {
+          const value = toNumber(row.value);
+          const height = (value / max) * innerHeight;
+          const x = left + step * index + (step - barWidth) / 2;
+          const y = top + innerHeight - height;
+
+          return (
+            <g key={`${toLabel(row.category)}-${index}`}>
+              <rect
+                x={x}
+                y={y}
+                width={barWidth}
+                height={height}
+                rx="8"
+                className="bar-chart-rect"
+              />
+              <text
+                x={x + barWidth / 2}
+                y={y - 8}
+                textAnchor="middle"
+                className="bar-chart-value"
+              >
+                {formatMetric(value)}
+              </text>
+              <text
+                x={x + barWidth / 2}
+                y={chartHeight - 18}
+                textAnchor="middle"
+                className="bar-chart-category"
+              >
+                {toLabel(row.category)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }
@@ -188,11 +287,30 @@ function LineChart({ rows }: { rows: Record<string, unknown>[] }) {
   );
 }
 
-function ScatterChart({ rows }: { rows: Record<string, unknown>[] }) {
+function ScatterChart({
+  execution,
+  rows,
+}: {
+  execution: Extract<CardExecution, { result: ProSquareQueryResult }>;
+  rows: Record<string, unknown>[];
+}) {
   const xValues = rows.map((row) => toNumber(row.x));
   const yValues = rows.map((row) => toNumber(row.y));
   const maxX = Math.max(...xValues, 1);
   const maxY = Math.max(...yValues, 1);
+  const clause = execution.card.parsedExpr.plotClause as PointPlotCall;
+  const xColumn = clause.xColumn.column ?? clause.xColumn.identifier;
+  const yColumn = clause.yColumn.column ?? clause.yColumn.identifier;
+  const xUnit = unitForColumn(clause.xColumn.column);
+  const yUnit = unitForColumn(clause.yColumn.column);
+  const xTicks = [0, 0.5, 1].map((ratio) => ({
+    value: maxX * ratio,
+    x: 40 + 260 * ratio,
+  }));
+  const yTicks = [0, 0.5, 1].map((ratio) => ({
+    value: maxY * ratio,
+    y: 170 - 140 * ratio,
+  }));
 
   return (
     <div className="scatter-chart">
@@ -202,10 +320,57 @@ function ScatterChart({ rows }: { rows: Record<string, unknown>[] }) {
         role="img"
         aria-label="Scatter chart"
       >
-        <path d="M30 170 H310" className="chart-grid-line" />
-        <path d="M30 20 V170" className="chart-grid-line" />
+        <defs>
+          <marker
+            id="chart-axis-arrow"
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto-start-reverse"
+          >
+            <path d="M0 0 L10 5 L0 10 Z" className="chart-axis-arrowhead" />
+          </marker>
+        </defs>
+        {yTicks.map((tick, index) => (
+          <g key={`y-${tick.value}-${index}`}>
+            <path
+              d={`M40 ${tick.y} H300`}
+              className={
+                index === 0 ? "chart-axis-line" : "chart-grid-line chart-grid-line-mid"
+              }
+            />
+            <text x="34" y={tick.y + 4} className="chart-axis-label">
+              {formatAxisValue(tick.value, yUnit)}
+            </text>
+          </g>
+        ))}
+        {xTicks.map((tick, index) => (
+          <g key={`x-${tick.value}-${index}`}>
+            <path
+              d={`M${tick.x} 20 V170`}
+              className={
+                index === 0 ? "chart-axis-line" : "chart-grid-line chart-grid-line-mid"
+              }
+            />
+            <text x={tick.x} y="184" textAnchor="middle" className="chart-axis-label">
+              {formatAxisValue(tick.value, xUnit)}
+            </text>
+          </g>
+        ))}
+        <path
+          d="M40 170 H300"
+          className="chart-axis-line"
+          markerEnd="url(#chart-axis-arrow)"
+        />
+        <path
+          d="M40 170 V20"
+          className="chart-axis-line"
+          markerEnd="url(#chart-axis-arrow)"
+        />
         {rows.map((row, index) => {
-          const x = 30 + (toNumber(row.x) / maxX) * 270;
+          const x = 40 + (toNumber(row.x) / maxX) * 260;
           const y = 170 - (toNumber(row.y) / maxY) * 140;
           return (
             <circle
@@ -217,11 +382,21 @@ function ScatterChart({ rows }: { rows: Record<string, unknown>[] }) {
             />
           );
         })}
+        <text x="170" y="188" textAnchor="middle" className="chart-axis-title">
+          {xColumn}
+          {xUnit ? ` (${xUnit})` : ""}
+        </text>
+        <text
+          x="16"
+          y="95"
+          textAnchor="middle"
+          className="chart-axis-title"
+          transform="rotate(-90 16 95)"
+        >
+          {yColumn}
+          {yUnit ? ` (${yUnit})` : ""}
+        </text>
       </svg>
-      <div className="scatter-chart-meta">
-        <span>X: quantity</span>
-        <span>Y: revenue</span>
-      </div>
     </div>
   );
 }
@@ -294,14 +469,11 @@ function DashboardCard({ execution }: { execution: CardExecution }) {
           {card.parsedExpr.plotClause.plotFunction}
         </span>
       </div>
-      <CardChart execution={execution} />
+      <div className="dashboard-card-chart">
+        <CardChart execution={execution} />
+      </div>
       <div className="dashboard-card-footer">
         <code>{card.expr}</code>
-        {"result" in execution && execution.result ? (
-          <span>{execution.result.rows.length} row(s)</span>
-        ) : (
-          <span>query failed</span>
-        )}
       </div>
     </article>
   );
