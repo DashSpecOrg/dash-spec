@@ -218,6 +218,19 @@ function BarChart({
         role="img"
         aria-label="Bar chart"
       >
+        <defs>
+          <marker
+            id="bar-axis-arrow"
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto-start-reverse"
+          >
+            <path d="M0 0 L10 5 L0 10 Z" className="chart-axis-arrowhead" />
+          </marker>
+        </defs>
         {ticks.map((tick, index) => (
           <g key={`${tick.value}-${index}`}>
             <path
@@ -237,6 +250,8 @@ function BarChart({
         <path
           d={`M${left} ${top} V${top + innerHeight} H${chartWidth - right}`}
           className="chart-axis-line"
+          markerEnd="url(#bar-axis-arrow)"
+          markerStart="url(#bar-axis-arrow)"
         />
 
         {rows.map((row, index) => {
@@ -252,7 +267,7 @@ function BarChart({
                 y={y}
                 width={barWidth}
                 height={height}
-                rx="8"
+                rx="3"
                 className="bar-chart-rect"
               />
               <text
@@ -356,6 +371,19 @@ function LineChart({
         role="img"
         aria-label="Line chart"
       >
+        <defs>
+          <marker
+            id="line-axis-arrow"
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto-start-reverse"
+          >
+            <path d="M0 0 L10 5 L0 10 Z" className="chart-axis-arrowhead" />
+          </marker>
+        </defs>
         {yTicks.map((tick, index) => (
           <g key={`${tick.value}-${index}`}>
             <path
@@ -374,10 +402,12 @@ function LineChart({
         <path
           d={`M${xStart} ${yBottom} H${xEnd}`}
           className="chart-axis-line"
+          markerEnd="url(#line-axis-arrow)"
         />
         <path
           d={`M${xStart} ${yBottom} V${yTop}`}
           className="chart-axis-line"
+          markerEnd="url(#line-axis-arrow)"
         />
         <polyline points={points} className="line-chart-path" />
         {values.map((value, index) => {

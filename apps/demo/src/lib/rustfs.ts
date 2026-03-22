@@ -2,7 +2,6 @@ import {
   CreateBucketCommand,
   GetObjectCommand,
   HeadBucketCommand,
-  HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client
@@ -82,19 +81,15 @@ async function ensureDashboardObjects(): Promise<void> {
   await ensureBucketExists();
 
   for (const key of await listLocalDashboardKeys()) {
-    try {
-      await s3.send(new HeadObjectCommand({ Bucket: dashboardBucket, Key: key }));
-    } catch {
-      const body = await readLocalDashboardYaml(key);
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: dashboardBucket,
-          Key: key,
-          Body: body,
-          ContentType: 'application/yaml'
-        })
-      );
-    }
+    const body = await readLocalDashboardYaml(key);
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: dashboardBucket,
+        Key: key,
+        Body: body,
+        ContentType: 'application/yaml'
+      })
+    );
   }
 }
 
