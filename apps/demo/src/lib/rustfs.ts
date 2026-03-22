@@ -18,7 +18,6 @@ const rustfsEndpoint = process.env.RUSTFS_ENDPOINT ?? 'http://127.0.0.1:9000';
 const rustfsAccessKey = process.env.RUSTFS_ACCESS_KEY ?? 'minioadmin';
 const rustfsSecretKey = process.env.RUSTFS_SECRET_KEY ?? 'minioadmin';
 const shouldBootstrap = process.env.DASHSPEC_BOOTSTRAP_RUSTFS !== 'false';
-const allowLocalFallback = process.env.DASHSPEC_ALLOW_LOCAL_FALLBACK !== 'false';
 
 let client: S3Client | undefined;
 
@@ -110,22 +109,22 @@ function toListing(key: string, spec: DashboardSpec, source: string): DashboardL
 }
 
 export async function listDashboards(): Promise<DashboardListing[]> {
-  try {
-    await ensureDashboardObjects();
+  await ensureDashboardObjects();
 
-    const response = await getClient().send(
-      new ListObjectsV2Command({
-        Bucket: dashboardBucket,
-        Prefix: dashboardPrefix
-      })
-    );
+  const response = await getClient().send(
+    new ListObjectsV2Command({
+      Bucket: dashboardBucket,
+      Prefix: dashboardPrefix
+    })
+  );
 
-    const keys = (response.Contents ?? [])
-      .map((entry) => entry.Key)
-      .filter((key): key is string => typeof key === 'string' && /\.(ya?ml)$/i.test(key));
+  const keys = (response.Contents ?? [])
+    .map((entry) => entry.Key)
+    .filter((key): key is string => typeof key === 'string' && /\.(ya?ml)$/i.test(key));
 
-    const listings = await Promise.all(
-      keys.map(async (key) => {
+  const listings = await Promise.all(
+    keys.map(async (key) => {
+      try {
         const object = await getClient().send(new GetObjectCommand({ Bucket: dashboardBucket, Key: key }));
         const yaml = await object.Body?.transformToString();
         if (!yaml) {
@@ -133,25 +132,19 @@ export async function listDashboards(): Promise<DashboardListing[]> {
         }
 
         return toListing(key, parseDashboard(yaml), `rustfs://${dashboardBucket}/${key}`);
-      })
-    );
+      } catch (error) {
+        console.warn(`Skipping invalid RustFS dashboard ${key}:`, error);
+        return null;
+      }
+    })
+  );
 
-    return listings.sort((a, b) => a.title.localeCompare(b.title));
-  } catch (error) {
-    if (!allowLocalFallback) {
-      throw error;
-    }
-
-    const keys = await listLocalDashboardKeys();
-    const listings = await Promise.all(
-      keys.map(async (key) => {
-        const yaml = await readLocalDashboardYaml(key);
-        return toListing(key, parseDashboard(yaml), `local://${path.basename(key)}`);
-      })
-    );
-
-    return listings.sort((a, b) => a.title.localeCompare(b.title));
+  const validListings = listings.filter((listing): listing is DashboardListing => listing !== null);
+  if (validListings.length > 0) {
+    return validListings.sort((a, b) => a.title.localeCompare(b.title));
   }
+
+  throw new Error('No valid dashboards were available in RustFS');
 }
 
 export async function loadDashboard(key = defaultDashboardKey): Promise<{
@@ -160,38 +153,24 @@ export async function loadDashboard(key = defaultDashboardKey): Promise<{
   source: string;
   key: string;
 }> {
-  try {
-    await ensureDashboardObjects();
+  await ensureDashboardObjects();
 
-    const response = await getClient().send(
-      new GetObjectCommand({
-        Bucket: dashboardBucket,
-        Key: key
-      })
-    );
+  const response = await getClient().send(
+    new GetObjectCommand({
+      Bucket: dashboardBucket,
+      Key: key
+    })
+  );
 
-    const yaml = await response.Body?.transformToString();
-    if (!yaml) {
-      throw new Error('RustFS returned an empty dashboard object');
-    }
-
-    return {
-      spec: parseDashboard(yaml),
-      yaml,
-      source: `rustfs://${dashboardBucket}/${key}`,
-      key
-    };
-  } catch (error) {
-    if (!allowLocalFallback) {
-      throw error;
-    }
-
-    const yaml = await readLocalDashboardYaml(key);
-    return {
-      spec: parseDashboard(yaml),
-      yaml,
-      source: `local://${path.basename(key)}`,
-      key
-    };
+  const yaml = await response.Body?.transformToString();
+  if (!yaml) {
+    throw new Error('RustFS returned an empty dashboard object');
   }
+
+  return {
+    spec: parseDashboard(yaml),
+    yaml,
+    source: `rustfs://${dashboardBucket}/${key}`,
+    key
+  };
 }

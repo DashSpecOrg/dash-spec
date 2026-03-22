@@ -1,17 +1,12 @@
-import type { CSSProperties } from "react";
-import type { DashboardCardSpec } from "@dash-spec/core";
-import {
-  listDashboards,
-  loadDashboard,
-  type DashboardListing,
-} from "../lib/rustfs";
-import { runProSquareQuery, type ProSquareQueryResult } from "../lib/prosquare";
+"use client";
 
-type DemoPageProps = {
-  searchParams?: Promise<{
-    dashboard?: string;
-  }>;
-};
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import type { CSSProperties } from "react";
+import { useEffect, useState } from "react";
+import type { DashboardCardSpec, DashboardSpec } from "@dash-spec/core";
+import { type DashboardListing } from "../lib/rustfs";
+import { type ProSquareQueryResult } from "../lib/prosquare";
 
 type CardExecution =
   | {
@@ -24,6 +19,14 @@ type CardExecution =
       result?: undefined;
       error: string;
     };
+
+type LoadedDashboard = {
+  spec: DashboardSpec;
+  yaml: string;
+  source: string;
+  key: string;
+  cards: CardExecution[];
+};
 
 function toLabel(value: unknown): string {
   if (value === null || value === undefined) {
@@ -62,6 +65,23 @@ function formatMetric(value: number): string {
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const response = await fetch(path, {
+    cache: "no-store",
+  });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      payload && typeof payload.error === "string"
+        ? payload.error
+        : `Request failed for ${path}`,
+    );
+  }
+
+  return payload as T;
 }
 
 function CardChart({ execution }: { execution: CardExecution }) {
@@ -307,7 +327,7 @@ function DashboardNav({
         {dashboards.map((dashboard) => {
           const isActive = dashboard.key === selectedKey;
           return (
-            <a
+            <Link
               className={
                 isActive
                   ? "dashboard-nav-item dashboard-nav-item-active"
@@ -317,7 +337,7 @@ function DashboardNav({
               key={dashboard.key}
             >
               <span className="dashboard-nav-item-name">{dashboard.title}</span>
-            </a>
+            </Link>
           );
         })}
       </nav>
@@ -325,115 +345,87 @@ function DashboardNav({
   );
 }
 
-export async function DemoContent({ searchParams }: DemoPageProps) {
-  try {
-    const params = (await searchParams) ?? {};
-    const dashboards = await listDashboards();
-    const selectedKey = dashboards.some(
-      (dashboard) => dashboard.key === params.dashboard,
-    )
-      ? (params.dashboard as string)
-      : dashboards[0]?.key;
+export function DemoContent() {
+  const searchParams = useSearchParams();
+  const requestedKey = searchParams.get("dashboard");
 
-    if (!selectedKey) {
-      throw new Error("No dashboards are available");
+  const [dashboards, setDashboards] = useState<DashboardListing[]>([]);
+  const [selectedKey, setSelectedKey] = useState("");
+  const [dashboard, setDashboard] = useState<LoadedDashboard | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const listPayload = await fetchJson<{ dashboards: DashboardListing[] }>(
+          "/api/dashboards",
+        );
+        if (cancelled) {
+          return;
+        }
+
+        setDashboards(listPayload.dashboards);
+
+        const resolvedKey = listPayload.dashboards.some(
+          (dashboard) => dashboard.key === requestedKey,
+        )
+          ? requestedKey!
+          : listPayload.dashboards[0]?.key ?? "";
+
+        if (!resolvedKey) {
+          throw new Error("No dashboards are available");
+        }
+
+        setSelectedKey(resolvedKey);
+
+        const detailPayload = await fetchJson<LoadedDashboard>(
+          `/api/dashboards/${resolvedKey
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/")}`,
+        );
+        if (cancelled) {
+          return;
+        }
+
+        setDashboard(detailPayload);
+      } catch (loadError) {
+        if (cancelled) {
+          return;
+        }
+
+        const message =
+          loadError instanceof Error
+            ? loadError.message
+            : "Dashboard loading failed";
+        setError(message);
+        setDashboard(null);
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
     }
 
-    const dashboard = await loadDashboard(selectedKey);
-    const cards = await Promise.all(
-      dashboard.spec.cards.map(async (card): Promise<CardExecution> => {
-        try {
-          const result = await runProSquareQuery(card.parsedExpr);
-          return { card, result };
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Query execution failed";
-          return { card, error: message };
-        }
-      }),
-    );
+    void load();
 
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedKey]);
+
+  if (error) {
     return (
       <main className="home-page demo-page">
         <section className="demo-section">
           <div className="page-breadcrumb" aria-label="Breadcrumb">
-            <a href="/">Home</a>
-            <span>/</span>
-            <span>Demo</span>
-          </div>
-
-          <div className="section-heading">
-            <div>
-              <p className="section-kicker">Demo</p>
-              <h1>Dashboard showcase</h1>
-              <p>Browse each sample dashboard as a single YAML-defined document.</p>
-            </div>
-          </div>
-
-          <div className="dashboard-browser">
-            <DashboardNav dashboards={dashboards} selectedKey={selectedKey} />
-
-            <div className="dashboard-browser-content">
-              <details className="dashboard-yaml-panel" open>
-                <summary className="dashboard-yaml-toggle" aria-labelledby="dashboard-yaml-title">
-                  <div className="dashboard-yaml-header">
-                    <p className="section-kicker">YAML</p>
-                    <h3 id="dashboard-yaml-title">Dashboard definition</h3>
-                  </div>
-                  <span className="dashboard-yaml-toggle-when-open">Hide YAML</span>
-                  <span className="dashboard-yaml-toggle-when-closed">Show YAML</span>
-                </summary>
-                <pre className="dashboard-yaml-code">
-                  <code>{dashboard.yaml}</code>
-                </pre>
-              </details>
-
-              <div className="dashboard-document">
-                <div className="dashboard-document-header">
-                  <div>
-                    <p className="section-kicker">Dashboard</p>
-                    <h2>{dashboard.spec.title}</h2>
-                    <p>{dashboard.spec.description}</p>
-                  </div>
-                  <div className="dashboard-document-facts">
-                    <span>Spec source: {dashboard.source}</span>
-                    <span>Cards: {dashboard.spec.cards.length}</span>
-                    <span>
-                      Grid: {dashboard.spec.dimensions.rows} x{" "}
-                      {dashboard.spec.dimensions.cols}
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  className="dashboard-grid"
-                  style={{
-                    gridTemplateColumns: `repeat(${dashboard.spec.dimensions.cols}, minmax(0, 1fr))`,
-                    gridTemplateRows: `repeat(${dashboard.spec.dimensions.rows}, minmax(120px, 1fr))`,
-                  }}
-                >
-                  {cards.map((execution) => (
-                    <DashboardCard
-                      key={execution.card.name}
-                      execution={execution}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-    );
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Dashboard loading failed";
-
-    return (
-      <main className="home-page demo-page">
-        <section className="demo-section">
-          <div className="page-breadcrumb" aria-label="Breadcrumb">
-            <a href="/">Home</a>
+            <Link href="/">Home</Link>
             <span>/</span>
             <span>Demo</span>
           </div>
@@ -444,10 +436,106 @@ export async function DemoContent({ searchParams }: DemoPageProps) {
               DashSpec expects RustFS and ProSquare to be available for the
               demo.
             </h1>
-            <p>{message}</p>
+            <p>{error}</p>
           </div>
         </section>
       </main>
     );
   }
+
+  if (isLoading || !dashboard) {
+    return (
+      <main className="home-page demo-page">
+        <section className="demo-section">
+          <div className="page-breadcrumb" aria-label="Breadcrumb">
+            <Link href="/">Home</Link>
+            <span>/</span>
+            <span>Demo</span>
+          </div>
+
+          <div className="demo-error-panel">
+            <p className="hero-chip">Loading</p>
+            <h1>Loading dashboard showcase</h1>
+            <p>Fetching dashboard definitions from the demo API.</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="home-page demo-page">
+      <section className="demo-section">
+        <div className="page-breadcrumb" aria-label="Breadcrumb">
+          <Link href="/">Home</Link>
+          <span>/</span>
+          <span>Demo</span>
+        </div>
+
+        <div className="section-heading">
+          <div>
+            <p className="section-kicker">Demo</p>
+            <h1>Dashboard showcase</h1>
+            <p>Browse each sample dashboard as a single YAML-defined document.</p>
+          </div>
+        </div>
+
+        <div className="dashboard-browser">
+          <DashboardNav dashboards={dashboards} selectedKey={selectedKey} />
+
+          <div className="dashboard-browser-content">
+            <details className="dashboard-yaml-panel" open>
+              <summary
+                className="dashboard-yaml-toggle"
+                aria-labelledby="dashboard-yaml-title"
+              >
+                <div className="dashboard-yaml-header">
+                  <p className="section-kicker">YAML</p>
+                  <h3 id="dashboard-yaml-title">Dashboard definition</h3>
+                </div>
+                <span className="dashboard-yaml-toggle-when-open">Hide YAML</span>
+                <span className="dashboard-yaml-toggle-when-closed">Show YAML</span>
+              </summary>
+              <pre className="dashboard-yaml-code">
+                <code>{dashboard.yaml}</code>
+              </pre>
+            </details>
+
+            <div className="dashboard-document">
+              <div className="dashboard-document-header">
+                <div>
+                  <p className="section-kicker">Dashboard</p>
+                  <h2>{dashboard.spec.title}</h2>
+                  <p>{dashboard.spec.description}</p>
+                </div>
+                <div className="dashboard-document-facts">
+                  <span>Spec source: {dashboard.source}</span>
+                  <span>Cards: {dashboard.spec.cards.length}</span>
+                  <span>
+                    Grid: {dashboard.spec.dimensions.rows} x{" "}
+                    {dashboard.spec.dimensions.cols}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className="dashboard-grid"
+                style={{
+                  gridTemplateColumns: `repeat(${dashboard.spec.dimensions.cols}, minmax(0, 1fr))`,
+                  gridTemplateRows: `repeat(${dashboard.spec.dimensions.rows}, minmax(120px, 1fr))`,
+                }}
+              >
+                {dashboard.cards.map((execution) => (
+                  <DashboardCard
+                    key={execution.card.name}
+                    execution={execution}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }
