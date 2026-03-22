@@ -36,6 +36,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   <a className="site-header-nav-link" href="/demo">
                     Demo
                   </a>
+                  <a className="site-header-nav-link" href="/docs">
+                    Docs
+                  </a>
                 </nav>
               </div>
               <div className="site-header-right">
