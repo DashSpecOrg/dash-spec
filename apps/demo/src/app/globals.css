@@ -52,7 +52,7 @@ a {
 }
 
 .site-header-inner {
-  width: min(1120px, calc(100vw - 32px));
+  width: min(1440px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 0.3rem 0;
   display: flex;

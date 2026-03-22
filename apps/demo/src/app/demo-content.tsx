@@ -7,7 +7,11 @@ import { useEffect, useState } from "react";
 import type { DashboardCardSpec, DashboardSpec } from "@dash-spec/core";
 import { type DashboardListing } from "../lib/rustfs";
 import { type ProSquareQueryResult } from "../lib/prosquare";
-import type { BarPlotCall, PiePlotCall, PointPlotCall } from "pql-parser/dist/types";
+import type {
+  BarPlotCall,
+  PiePlotCall,
+  PointPlotCall,
+} from "pql-parser/dist/types";
 
 type CardExecution =
   | {
@@ -219,7 +223,9 @@ function BarChart({
             <path
               d={`M${left} ${tick.y} H${chartWidth - right}`}
               className={
-                index === 0 ? "chart-axis-line" : "chart-grid-line chart-grid-line-mid"
+                index === 0
+                  ? "chart-axis-line"
+                  : "chart-grid-line chart-grid-line-mid"
               }
             />
             <text x={left - 8} y={tick.y + 4} className="chart-axis-label">
@@ -304,8 +310,14 @@ function LineChart({
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const range = Math.max(max - min, 1);
-  const xLabel = labelForColumn(clause.xColumn.column, clause.xColumn.identifier);
-  const yLabel = labelForColumn(clause.yColumn.column, clause.yColumn.identifier);
+  const xLabel = labelForColumn(
+    clause.xColumn.column,
+    clause.xColumn.identifier,
+  );
+  const yLabel = labelForColumn(
+    clause.yColumn.column,
+    clause.yColumn.identifier,
+  );
   const xUnit = unitForColumn(clause.xColumn.column);
   const yUnit = unitForColumn(clause.yColumn.column);
   const xStart = 40;
@@ -315,7 +327,10 @@ function LineChart({
   const yBottom = 170;
   const xTicks = rows.map((row, index) => ({
     label: toLabel(row.x),
-    x: rows.length === 1 ? (xStart + xEnd) / 2 : xStart + (index / (rows.length - 1)) * (xEnd - xStart),
+    x:
+      rows.length === 1
+        ? (xStart + xEnd) / 2
+        : xStart + (index / (rows.length - 1)) * (xEnd - xStart),
   }));
   const yTicks = [0, 0.5, 1].map((ratio) => ({
     value: min + range * ratio,
@@ -324,7 +339,10 @@ function LineChart({
 
   const points = values
     .map((value, index) => {
-      const x = rows.length === 1 ? (xStart + xEnd) / 2 : xStart + (index / (rows.length - 1)) * (xEnd - xStart);
+      const x =
+        rows.length === 1
+          ? (xStart + xEnd) / 2
+          : xStart + (index / (rows.length - 1)) * (xEnd - xStart);
       const y = yBottom - ((value - min) / range) * (yBottom - yTop);
       return `${x},${y}`;
     })
@@ -343,7 +361,9 @@ function LineChart({
             <path
               d={`M${xStart} ${tick.y} H${xEnd}`}
               className={
-                index === 0 ? "chart-axis-line" : "chart-grid-line chart-grid-line-mid"
+                index === 0
+                  ? "chart-axis-line"
+                  : "chart-grid-line chart-grid-line-mid"
               }
             />
             <text x={xStart - 8} y={tick.y + 4} className="chart-axis-label">
@@ -351,8 +371,14 @@ function LineChart({
             </text>
           </g>
         ))}
-        <path d={`M${xStart} ${yBottom} H${xEnd}`} className="chart-axis-line" />
-        <path d={`M${xStart} ${yBottom} V${yTop}`} className="chart-axis-line" />
+        <path
+          d={`M${xStart} ${yBottom} H${xEnd}`}
+          className="chart-axis-line"
+        />
+        <path
+          d={`M${xStart} ${yBottom} V${yTop}`}
+          className="chart-axis-line"
+        />
         <polyline points={points} className="line-chart-path" />
         {values.map((value, index) => {
           const x =
@@ -382,7 +408,12 @@ function LineChart({
             {tick.label}
           </text>
         ))}
-        <text x="170" y={chartHeight - 6} textAnchor="middle" className="chart-axis-title">
+        <text
+          x="170"
+          y={chartHeight - 6}
+          textAnchor="middle"
+          className="chart-axis-title"
+        >
           {xLabel}
           {xUnit ? ` (${xUnit})` : ""}
         </text>
@@ -452,7 +483,9 @@ function ScatterChart({
             <path
               d={`M40 ${tick.y} H300`}
               className={
-                index === 0 ? "chart-axis-line" : "chart-grid-line chart-grid-line-mid"
+                index === 0
+                  ? "chart-axis-line"
+                  : "chart-grid-line chart-grid-line-mid"
               }
             />
             <text x="34" y={tick.y + 4} className="chart-axis-label">
@@ -465,7 +498,9 @@ function ScatterChart({
             <path
               d={`M${tick.x} 20 V170`}
               className={
-                index === 0 ? "chart-axis-line" : "chart-grid-line chart-grid-line-mid"
+                index === 0
+                  ? "chart-axis-line"
+                  : "chart-grid-line chart-grid-line-mid"
               }
             />
             <text
@@ -645,10 +680,6 @@ function DashboardNav({
     <aside className="dashboard-nav">
       <div className="dashboard-nav-header">
         <h2>Sample dashboards</h2>
-        <p>
-          Choose a dashboard YAML definition from RustFS or the local fallback
-          set.
-        </p>
       </div>
       <nav className="dashboard-nav-list" aria-label="Dashboard list">
         {dashboards.map((dashboard) => {
@@ -703,7 +734,7 @@ export function DemoContent() {
           (dashboard) => dashboard.key === requestedKey,
         )
           ? requestedKey!
-          : listPayload.dashboards[0]?.key ?? "";
+          : (listPayload.dashboards[0]?.key ?? "");
 
         if (!resolvedKey) {
           throw new Error("No dashboards are available");
@@ -803,7 +834,9 @@ export function DemoContent() {
           <div>
             <p className="section-kicker">Demo</p>
             <h1>Dashboard showcase</h1>
-            <p>Browse each sample dashboard as a single YAML-defined document.</p>
+            <p>
+              Browse each sample dashboard as a single YAML-defined document.
+            </p>
           </div>
         </div>
 
@@ -820,8 +853,12 @@ export function DemoContent() {
                   <p className="section-kicker">YAML</p>
                   <h3 id="dashboard-yaml-title">Dashboard definition</h3>
                 </div>
-                <span className="dashboard-yaml-toggle-when-open">Hide YAML</span>
-                <span className="dashboard-yaml-toggle-when-closed">Show YAML</span>
+                <span className="dashboard-yaml-toggle-when-open">
+                  Hide YAML
+                </span>
+                <span className="dashboard-yaml-toggle-when-closed">
+                  Show YAML
+                </span>
               </summary>
               <pre className="dashboard-yaml-code">
                 <code>{dashboard.yaml}</code>

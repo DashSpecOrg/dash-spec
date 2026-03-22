@@ -1,0 +1,67 @@
+name: executive_pulse
+title: Executive pulse
+description: A compact view of revenue momentum, customer mix, campaign efficiency, and support health.
+dimensions:
+  rows: 6
+  cols: 12
+cards:
+  - name: monthly_revenue_trend
+    title: Monthly revenue trend
+    description: Revenue by month across the sales dashboard view.
+    expr: PLOT LINE(month, SUM(revenue)) FROM dashboard_sales GROUP BY month ORDER BY month ASC LIMIT 12
+    pos:
+      rows:
+        start: 1
+        end: 3
+      cols:
+        start: 1
+        end: 6
+
+  - name: segment_revenue_mix
+    title: Revenue by segment
+    description: Revenue contribution split by customer segment.
+    expr: PLOT PIE(segment, SUM(revenue)) FROM dashboard_sales GROUP BY segment ORDER BY segment ASC
+    pos:
+      rows:
+        start: 1
+        end: 3
+      cols:
+        start: 7
+        end: 12
+
+  - name: channel_conversions
+    title: Conversions by channel
+    description: Marketing conversions grouped by acquisition channel.
+    expr: PLOT BAR(channel, SUM(conversions)) FROM dashboard_campaigns GROUP BY channel ORDER BY channel ASC
+    pos:
+      rows:
+        start: 4
+        end: 6
+      cols:
+        start: 1
+        end: 4
+
+  - name: support_by_priority
+    title: Satisfaction by priority
+    description: Average support satisfaction score by ticket priority.
+    expr: PLOT BAR(priority, AVG(satisfaction_score)) FROM dashboard_support GROUP BY priority ORDER BY priority ASC
+    pos:
+      rows:
+        start: 4
+        end: 6
+      cols:
+        start: 5
+        end: 8
+
+  - name: traffic_quality
+    title: Traffic quality
+    description: Session duration versus bounce rate for higher-volume traffic sources.
+    expr: PLOT SCATTER(avg_session_duration_sec, bounce_rate) FROM dashboard_traffic WHERE sessions > 15000 ORDER BY bounce_rate DESC LIMIT 24
+    pos:
+      rows:
+        start: 4
+        end: 6
+      cols:
+        start: 9
+        end: 12
+
