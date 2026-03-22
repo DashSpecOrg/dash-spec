@@ -25,6 +25,7 @@ YAML dashboard spec  →  parseDashboard()  →  DashboardSpec  →  your render
 |---|---|
 | `packages/dash-spec` | `@dash-spec/core` — the YAML parser and type definitions |
 | `apps/demo` | Next.js demo app that renders live dashboards from RustFS |
+| [`pql-parser`](https://github.com/DashSpecOrg/pql-parser) | Sibling repo — the PQL lexer, parser, and AST types |
 
 
 ## Quick start
