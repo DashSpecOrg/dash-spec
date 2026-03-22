@@ -1,0 +1,29 @@
+name: dashboard1
+title: My dashboard
+description: This is my dashboard.
+dimensions:
+ rows: 5
+ cols: 10
+cards:
+- name: card_1
+  title: Card 1
+  description: this is card no.1
+  expr: PLOT SCATTER(name, quantity)
+  pos:
+   rows:
+     start: 1
+     end: 2
+   cols:
+     start: 3
+     end: 4
+- name: card_2
+  title: Card 2
+  description: this is card no.2
+  expr: PLOT SCATTER(name, quantity)
+  pos:
+   rows:
+     start: 1
+     end: 2
+   cols:
+     start: 3
+     end: 4
