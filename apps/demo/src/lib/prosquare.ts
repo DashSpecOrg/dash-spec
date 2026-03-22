@@ -94,7 +94,23 @@ function getPool(): Pool {
   return pool;
 }
 
+const sourceAliases: Record<string, string> = {
+  sales: 'dashboard_sales',
+  traffic: 'dashboard_traffic',
+  support: 'dashboard_support',
+  campaigns: 'dashboard_campaigns',
+  dashboard_sales: 'dashboard_sales',
+  dashboard_traffic: 'dashboard_traffic',
+  dashboard_support: 'dashboard_support',
+  dashboard_campaigns: 'dashboard_campaigns'
+};
+
 function detectSourceView(query: PQLQuery): string {
+  const explicitSource = sourceAliases[query.fromClause.table];
+  if (explicitSource) {
+    return explicitSource;
+  }
+
   const identifiers = new Set<string>();
   const pushColumn = (column?: ColumnMetadata) => {
     if (column?.column) {

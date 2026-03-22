@@ -25,12 +25,24 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <div className="site-shell">
           <header className="site-header">
             <div className="site-header-inner">
-              <a className="brand-link" href="/" aria-label="DashSpec home">
-                <BrandLogo compact />
-              </a>
-              <div className="site-header-copy">
-                <span className="site-eyebrow">Declarative dashboard library</span>
-                <span className="site-tagline">YAML-defined dashboards with PQL-powered visualizations.</span>
+              <div className="site-header-left">
+                <a className="brand-link" href="/" aria-label="DashSpec home">
+                  <BrandLogo compact />
+                </a>
+                <nav className="site-header-nav" aria-label="Primary">
+                  <a className="site-header-nav-link" href="/">
+                    Home
+                  </a>
+                  <a className="site-header-nav-link" href="/demo">
+                    Demo
+                  </a>
+                </nav>
+              </div>
+              <div className="site-header-right">
+                <div className="site-header-copy">
+                  <span className="site-eyebrow">Declarative dashboard library</span>
+                  <span className="site-tagline">YAML-defined dashboards with PQL-powered visualizations.</span>
+                </div>
               </div>
             </div>
           </header>

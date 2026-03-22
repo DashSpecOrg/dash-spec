@@ -8,7 +8,7 @@ cards:
 - name: traffic_sessions
   title: Sessions by source
   description: Website sessions grouped by acquisition source.
-  expr: PLOT BAR(source, SUM(sessions)) GROUP BY source ORDER BY source ASC
+  expr: PLOT BAR(source, SUM(sessions)) FROM dashboard_traffic GROUP BY source ORDER BY source ASC
   pos:
    rows:
      start: 1
@@ -19,7 +19,7 @@ cards:
 - name: traffic_quality
   title: Bounce rate scatter
   description: Compare bounce rate against session duration.
-  expr: PLOT SCATTER(avg_session_duration_sec, bounce_rate) WHERE sessions > 15000 ORDER BY bounce_rate DESC LIMIT 24
+  expr: PLOT SCATTER(avg_session_duration_sec, bounce_rate) FROM dashboard_traffic WHERE sessions > 15000 ORDER BY bounce_rate DESC LIMIT 24
   pos:
    rows:
      start: 1
@@ -30,7 +30,7 @@ cards:
 - name: campaign_conversions
   title: Campaign conversions
   description: Conversion volume across marketing channels.
-  expr: PLOT PIE(channel, SUM(conversions)) GROUP BY channel ORDER BY channel ASC
+  expr: PLOT PIE(channel, SUM(conversions)) FROM dashboard_campaigns GROUP BY channel ORDER BY channel ASC
   pos:
    rows:
      start: 4
@@ -41,7 +41,7 @@ cards:
 - name: support_satisfaction
   title: Ticket satisfaction
   description: Satisfaction score distribution by ticket priority.
-  expr: PLOT BAR(priority, AVG(satisfaction_score)) GROUP BY priority ORDER BY priority ASC
+  expr: PLOT BAR(priority, AVG(satisfaction_score)) FROM dashboard_support GROUP BY priority ORDER BY priority ASC
   pos:
    rows:
      start: 4
