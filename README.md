@@ -233,14 +233,14 @@ The demo app renders live dashboards from a RustFS (S3-compatible) bucket and ex
 # Start RustFS + Postgres
 docker compose up -d
 
-# Install dependencies
+# Install workspace dependencies from the repo root
 npm install
 
-# Run the dev server
-cd apps/demo && npm run dev
+# Run the demo from the repo root
+npm run dev
 ```
 
-Then open [http://localhost:3000/demo](http://localhost:3000/demo).
+Then open [http://localhost:2026/demo](http://localhost:2026/demo).
 
 Dashboard YAML files are loaded from `dashboards/` and automatically synced to the `dashspec` bucket on startup. Add or edit YAML files there to update the demo.
 
